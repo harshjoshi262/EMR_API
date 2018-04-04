@@ -1,0 +1,45 @@
+var mongoose=require('mongoose');
+var Schema=mongoose.Schema;
+var userSchema = Schema({
+    _id: { type: String},
+    accessCode: { type: String, unique: true },
+    userType: { type: String, required: true },
+    email: { type: String, },
+    name: { type: String, required: false },
+    firstName: { type: String, default: '', required: true },
+    lastName: { type: String, default: '', required: true },
+    gender: { type: String, required: true },
+    prefix: { type: String, required: true },
+    userGroup: { type: String, required: true },
+    userSubGroup: { type: String, required: false },
+    dob: { type: Number, required: false },
+    userAssociation: { type: String, required: false },
+    unitDepartments: [{ type: String }],
+    personalInfo: Object,
+    addressInfo: Object,
+    dependentInfo: [],
+    unit: { type: String, required: false },
+    password: { type: String, required: false },
+    hospitalName: { type: String, required: false },
+    userRole: { type: String, required: false },
+    userId: { type: String, required: true },
+    signCode: { type: String, required: false },
+    resetPasswordToken: String,
+    resetPasswordExpires: String,
+    userDetails: Object,
+    userImg: String,
+    attachments: [],
+    // change password field for user registration
+    setPassword: { type: String, required: true, default: "false" },
+    // active or inactive user
+    userStatus: { type: String, required: true, default: "inactive", enum: ["active", "inactive"] },
+    created_at: { type: Number, required: false },
+    created_by: { type: String, required: false },
+    updated_at: { type: String, required: false },
+    updated_by: { type: String, required: false },
+    hisUserId: { type: Number, },
+    custom_status:{type:Number,default:-99},
+    is_login:{type:Number,default:0},//0=Logout//1=Online,
+    sockets:[]
+  });
+module.exports=mongoose.model('User',userSchema,'User');

@@ -1,0 +1,186 @@
+{
+
+    "SMTP": {      
+        "baseUrl": "172.16.99.47"
+    },    
+    "HISDB": {
+        "server": "172.16.99.65",
+        "database": "MEDCARE_LWEH_LIVE",
+        "database_development": "MEDCARE_DEVELOPMENT_LWEH",
+        "user": "sa",
+        "password": "password"
+    },
+    "mongodb": {
+        "dbName": "EHR",
+        "dbNameMaster": "Clinicare_Masters",
+        "dbHost": "172.16.99.52",
+        "dbPort": 27017,
+        "masterDbName": "Clinicare_Masters",
+        "aclDbName": "ACL",
+        "prefix": ":@172.16.99.45:27017,172.16.99.53:27017,172.16.99.52:28020/",
+        "tail": "?replicaSet=LWEH_Clinicare_Live",
+        "dbUser": "",
+        "dbPassword": ""
+    },
+    "ehrserver": {
+        "serverPort": 5001,
+        "ip": "172.16.99.47",
+        "secured": false,
+        "mims_server_port": 2002,
+        "mims_server_ip": "172.16.99.69",
+        "mims_interaction": true,
+        "allergy_interaction": true
+    },
+    "rabbitMQ": {
+        "switch": "ON",
+        "host": "172.16.99.69",
+        "host_development": "172.16.99.69",
+        "accessUser": "sdgt",
+        "accessPassword": "sdgt",
+        "exchanges": [
+            {
+                "exchange": "registration",
+                "queue": [
+                    {
+                        "name": "OPD",
+                        "isIncoming": true,
+                        "keys": [
+                            "OPD"
+                        ]
+                    },
+                    {
+                        "name": "BedRelease",
+                        "isIncoming": true,
+                        "keys": [
+                            "BedRelease"
+                        ]
+                    },
+                    {
+                        "name": "VisitCancel",
+                        "isIncoming": true,
+                        "keys": [
+                            "VisitCancel"
+                        ]
+                    },
+                    {
+                        "name": "IPD",
+                        "isIncoming": true,
+                        "keys": [
+                            "IPD"
+                        ]
+                    },
+                    {
+                        "name": "MedicationDispence",
+                        "isIncoming": true,
+                        "keys": [
+                            "MedicationDispence"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "USER",
+                "queue": [
+                    {
+                        "name": "user",
+                        "isIncoming": true,
+                        "keys": [
+                            "User_Doc"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "masters",
+                "queue": [
+                    {
+                        "name": "masters",
+                        "isIncoming": true,
+                        "keys": [
+                            "Insert",
+                            "Update",
+                            "Delete"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "notification",
+                "queue": [
+                    {
+                        "name": "notification",
+                        "isIncoming": false,
+                        "keys": [
+                            "flagAlert"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "cpoeOrders",
+                "queue": [
+                    {
+                        "name": "Orders",
+                        "isIncoming": false,
+                        "keys": [
+                            "pharmacy",
+                            "procedure order",
+                            "Lab",
+                            "Blood Component",
+                            "nursing",
+                            "General",
+                            "Consult",
+                            "vital",
+                            "patient movement",
+                            "Imaging Order"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "MLC",
+                "queue": [
+                    {
+                        "name": "MLCPatient",
+                        "isIncoming": true,
+                        "keys": [
+                            "MLCPatient"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "PACS_Messages",
+                "queue": [
+                    {
+                        "name": "ADT",
+                        "isIncoming": false,
+                        "keys": [
+                            "A01",
+                            "A04",
+                            "A08"
+                        ]
+                    },
+                    {
+                        "name": "ORM",
+                        "isIncoming": false,
+                        "keys": [
+                            "O01"
+                        ]
+                    },
+                    {
+                        "name": "ORU",
+                        "isIncoming": true,
+                        "keys": [
+                            "R01"
+                        ]
+                    }
+                ]
+            }
+        ],
+        "queues": [
+            "CMS_Cardiac_Ward_Q"
+        ]
+    }
+   
+}

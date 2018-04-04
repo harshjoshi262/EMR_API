@@ -1,0 +1,394 @@
+From 141aa4b454a58015c9ba938e33b60d571dfcafb4 Mon Sep 17 00:00:00 2001
+From: "LAPTOP-SQCASSM3\\BBS" <riyaj@sdglobaltech.com>
+Date: Wed, 21 Feb 2018 17:34:34 +0800
+Subject: [PATCH] nursing task mark complete once reached stop date
+
+---
+ controllers/nursingController.js |   2 +-
+ models/cpoe_model.js             | 100 ++++++++++++++++++++++++++-------------
+ models/cron_model.js             |  53 +++++++++++++++++++--
+ models/schema/domain-model.js    |  13 ++---
+ 4 files changed, 125 insertions(+), 43 deletions(-)
+
+diff --git a/controllers/nursingController.js b/controllers/nursingController.js
+index 13fcf00..3869eda 100644
+--- a/controllers/nursingController.js
++++ b/controllers/nursingController.js
+@@ -155,7 +155,7 @@ module.exports.stationPatientList = function (req, res) {
+                     // "cpoeorder": { $first: '$cpoeorder' },
+                     "cpoeorderCount": { $first: '$cpoeorderCount' },
+                     // "medication": { $push: '$medication' },
+-                    "medicationCount":{$first:"$medicationCount"},
++                    "medicationCount": { $first: "$medicationCount" },
+                     "nursingTasks": { $push: '$nursingTasks' },
+                     "nursingTasksCount": {
+                         $sum:
+diff --git a/models/cpoe_model.js b/models/cpoe_model.js
+index 0012c37..7cf7ef3 100644
+--- a/models/cpoe_model.js
++++ b/models/cpoe_model.js
+@@ -2876,13 +2876,14 @@ function updateOrderStatus(orderElement, discounts, options, callback) {
+         } else {
+             if (options.medicationStatus == true) {
+                 changeMedicationStatus(orderElement._id, orderElement.orderStatus);
+-            }
+-            if (options.medication == true) {
++            } else if (options.medication == true) {
+                 createMedicationRecord(orderElement);
+-            }
+-            if (options.consult == true) {
++            } else if (options.consult == true) {
+                 notificationModel.generateConsultNotification(orderElement);
++            } else if (options.nursingTask == true) {
++                createNursingTask(orderElement);
+             }
++
+             if (options.onBehalf == true) {
+                 generateOnBehalfNotification(orderElement)
+             }
+@@ -2891,7 +2892,36 @@ function updateOrderStatus(orderElement, discounts, options, callback) {
+         }
+     })
+ }
+-
++var createNursingTask = function (order) {
++    let ordereCategory = order.orderCategory.toLowerCase();
++    var newTask = new documentObject.nursing_tasks();
++    newTask._id = uuid.v4();
++    if (ordereCategory == 'nursing') { // nursing order 
++        newTask.Task = order.orderItems.order;
++    } else if (ordereCategory == 'general') { // general order
++        newTask.Task = order.orderItems.order;
++    } else { // vital order     
++        newTask.Task = order.orderItems.vitalSign;
++    }
++    newTask.PatientId = order.patientId;
++    newTask.VisitId = order.visitId;
++    newTask.Urgency = order.orderItems.urgency;
++    newTask.Instruction = order.orderItems.instruction;
++    newTask.CpoeOrderId = order._id;
++    newTask.Comment = order.orderItems.comment;
++    newTask.Created_By = order.userId;
++    newTask.Created_At = order.orderDate;
++    newTask.Schedule = order.orderItems.schedule;
++    newTask.IsComplete = false;
++    newTask.StartDate = order.orderItems.startDate;
++    newTask.StopDate = order.orderItems.stopDate;
++    newTask.IsError = false;
++    newTask.save(function (err) {
++        if (err) {
++            console.log(err);
++        }
++    })
++}
+ function signOrders(data, userResult, res) {
+     cpoeDocument.CpoeOrder.find({
+         _id: { $in: data.cpoeOrders },
+@@ -2911,8 +2941,9 @@ function signOrders(data, userResult, res) {
+                     tempHistory.action = 'sign';
+                     tempHistory.userId = orderElement.userId;
+                     tempHistory.timestamp = new Date();
++                    var orderElementCategory = orderElement.orderCategory.toLowerCase();
+                     // generate medication           
+-                    if (orderElement.orderCategory.toLowerCase() == 'pharmacy'
++                    if (orderElementCategory == 'pharmacy'
+                         && (orderElement.orderStatus.toLowerCase() == 'unsigned' || orderElement.orderStatus.toLowerCase().indexOf('update') > -1)) {
+                         // console.log(!orderElement.orderItems.isConsumableIp + ":" + !orderElement.orderItems.isConsumableOp)
+                         orderElement.duplicateChecked = true;
+@@ -2935,7 +2966,7 @@ function signOrders(data, userResult, res) {
+                             log("no doctorId in on behalf order ")
+                         }
+                     }
+-                    if (orderElement.orderCategory.toLowerCase() == 'consult') {
++                    if (orderElementCategory == 'consult') {
+                         if (orderElement.orderItems.consult_completion === undefined)
+                             orderElement.orderItems.consult_completion = false;
+                         if (!orderElement.orderItems.consult_completion) {
+@@ -2950,7 +2981,7 @@ function signOrders(data, userResult, res) {
+                         }
+                     }
+ 
+-                    if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                    if (orderElementCategory == 'pharmacy') {
+                         orderElement.orderStatus = 'active';
+                     }
+ 
+@@ -2960,7 +2991,7 @@ function signOrders(data, userResult, res) {
+                         orderElement.canCancel = false;
+                         orderElement.canDiscontinue = false;
+                         orderElement.canEdit = false;
+-                        if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                        if (orderElementCategory == 'pharmacy') {
+                             changeMedicationStatus(orderElement._id, 'cancelled')
+                         }
+                     }
+@@ -2980,7 +3011,7 @@ function signOrders(data, userResult, res) {
+                         orderElement.canCancel = false;
+                         orderElement.canDiscontinue = false;
+                         orderElement.canEdit = false;
+-                        if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                        if (orderElementCategory == 'pharmacy') {
+                             changeMedicationStatus(orderElement._id, orderElement.orderStatus)
+                         }
+                     }
+@@ -2996,9 +3027,9 @@ function signOrders(data, userResult, res) {
+                             callback_each(err);
+                         } else {
+                             // order integration call to rabitmq
+-                            if (orderElement.orderCategory.toLowerCase() !== 'pharmacy' && orderElement.orderCategory.toLowerCase() !== 'consult')
++                            if (orderElementCategory !== 'pharmacy' && orderElementCategory !== 'consult')
+                                 integrationModel.placeOrderToHIS(orderElement);
+-                            else if (orderElement.orderCategory.toLowerCase() !== 'consult') {
++                            else if (orderElementCategory !== 'consult') {
+                                 orderElement.visitId = orderElement.visitId.replace(/\s+/g, '');
+                                 if (pharmacyOrders[orderElement.visitId] === undefined) {
+                                     pharmacyOrders[orderElement.visitId] = {
+@@ -3145,7 +3176,8 @@ function signOrdersParallel(data, userResult, res) {
+                         'medication': false,
+                         'onBehalf': false,
+                         'consult': false,
+-                        'medicationStatus': false
++                        'medicationStatus': false,
++                        'nursingTask': false
+                     }
+                     async.eachSeries(result,
+                         function (orderElement, callback_each) {
+@@ -3153,8 +3185,10 @@ function signOrdersParallel(data, userResult, res) {
+                             tempHistory.action = 'sign';
+                             tempHistory.userId = orderElement.userId;
+                             tempHistory.timestamp = new Date();
+-                            // generate medication           
+-                            if (orderElement.orderCategory.toLowerCase() == 'pharmacy'
++
++                            var orderElementCategory = orderElement.orderCategory.toLowerCase();
++                            // create medication item or update if already exist        
++                            if (orderElementCategory == 'pharmacy'
+                                 && (orderElement.orderStatus.toLowerCase() == 'unsigned' || orderElement.orderStatus.toLowerCase().indexOf('update') > -1)) {
+                                 // console.log(!orderElement.orderItems.isConsumableIp + ":" + !orderElement.orderItems.isConsumableOp)
+                                 orderElement.duplicateChecked = true;
+@@ -3164,11 +3198,11 @@ function signOrdersParallel(data, userResult, res) {
+                                 }
+                             }
+ 
+-                            // orderStatus
++                            // orderStatus of all orders after sign will pending by default                            
+                             var orderStatus = (orderElement.orderStatus !== undefined) ? orderElement.orderStatus : '';
+                             orderElement.orderStatus = 'pending'
+                             orderElement.signedBy = userResult.userId
+-                            // check for on behalf order 
++                            // onBehalf work flow
+                             if (document.isFieldFilled(data.type) && data.type === "onBehalf") {
+                                 orderElement.onBehalf = data.payload
+                                 orderElement.onBehalf.orderStatus = 'unsigned'
+@@ -3179,7 +3213,8 @@ function signOrdersParallel(data, userResult, res) {
+                                     log("######### no doctorId in on behalf order ")
+                                 }
+                             }
+-                            if (orderElement.orderCategory.toLowerCase() == 'consult') {
++                            // consult order flow
++                            if (orderElementCategory == 'consult') {
+                                 if (orderElement.orderItems.consult_completion === undefined)
+                                     orderElement.orderItems.consult_completion = false;
+                                 if (!orderElement.orderItems.consult_completion) {
+@@ -3193,59 +3228,58 @@ function signOrdersParallel(data, userResult, res) {
+                                         { _id: orderElement.visitId },
+                                         { $set: { isActive: false } });
+                                 }
+-                            }
+-
+-                            if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                            } else if (orderElementCategory == 'pharmacy' || orderElementCategory == 'general') {
+                                 orderElement.orderStatus = 'active';
+                             }
+-
++                            // change status actions cancelled, updated, discontinued
+                             if (orderStatus.toLowerCase().indexOf('cancel') != -1) {
+                                 tempHistory.action = 'cancel';
+                                 orderElement.orderStatus = 'cancelled';
+                                 orderElement.canCancel = false;
+                                 orderElement.canDiscontinue = false;
+                                 orderElement.canEdit = false;
+-                                if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                                if (orderElementCategory == 'pharmacy') {
+                                     // changeMedicationStatus(orderElement._id, 'cancelled')
+                                     options.medicationStatus = true;
+                                 }
+-                            }
+-                            if (orderStatus.toLowerCase().indexOf('update') != -1) {
++                            } else if (orderStatus.toLowerCase().indexOf('update') != -1) {
+                                 tempHistory.action = 'update';
+                                 orderElement.orderStatus = 'active';
+                                 orderElement.canCancel = true;
+                                 orderElement.canDiscontinue = true;
+                                 orderElement.canEdit = true;
+                                 orderElement.isUpdated = true;
+-                            }
+-
+-
+-                            if (orderStatus.toLowerCase().indexOf('discontinue') != -1) {
++                            } else if (orderStatus.toLowerCase().indexOf('discontinue') != -1) {
+                                 orderElement.orderStatus = orderElement.isScheduledDiscontinue ? 'discontinue scheduled' : 'discontinued';
+                                 tempHistory.action = orderElement.orderStatus;
+                                 orderElement.canCancel = false;
+                                 orderElement.canDiscontinue = false;
+                                 orderElement.canEdit = false;
+-                                if (orderElement.orderCategory.toLowerCase() == 'pharmacy') {
++                                if (orderElementCategory == 'pharmacy') {
+                                     // changeMedicationStatus(orderElement._id, orderElement.orderStatus);
+                                     options.medicationStatus = true;
+                                 }
+                             }
+-
++                            // add current operation to activity log
+                             if (orderElement.activityLog) {
+                                 if (orderElement.activityLog.length < 1) {
+                                     orderElement.activityLog = [];// to avoid problem in existing data
+                                 }
+                                 orderElement.activityLog.push(tempHistory);
+                             }
++                            // Mark Nursing task work flow
++                            if (orderElementCategory == 'general' || orderElementCategory == 'nursing' || orderElementCategory == 'vital') {
++                                options.nursingTask = true;
++                            }
++
+                             updateOrderStatus(orderElement, data.discounts, options, function (err) {
+                                 if (err) {
+                                     callback_each(err);
+                                 } else {
+                                     // order integration call to rabitmq
+-                                    if (orderElement.orderCategory.toLowerCase() !== 'pharmacy' && orderElement.orderCategory.toLowerCase() !== 'consult')
++                                    if (orderElementCategory !== 'pharmacy' && orderElementCategory !== 'consult')
+                                         integrationModel.placeOrderToHIS(orderElement);
+-                                    else if (orderElement.orderCategory.toLowerCase() !== 'consult') {
++                                    else if (orderElementCategory !== 'consult') {
+                                         orderElement.visitId = orderElement.visitId.replace(/\s+/g, '');
+                                         if (pharmacyOrders[orderElement.visitId] === undefined) {
+                                             pharmacyOrders[orderElement.visitId] = {
+diff --git a/models/cron_model.js b/models/cron_model.js
+index 80b120c..9f29f53 100644
+--- a/models/cron_model.js
++++ b/models/cron_model.js
+@@ -34,10 +34,57 @@ var everydayJob = new cron.CronJob('01 00 00 * * *', function () {
+     // run everday from sunday to saturday at  01 seconds  00 minutes 00 hour
+     modifyActiveOldVisits();
+     completeMedicationOrders();
++    markCompleteNursingTasks();
+     // change order and medication  status of pending discontinued orders
+     discontinueScheduledOrders();
+ });
++var markCompleteNursingTasks = function () {
++    var currentDate = Date.now();
++    domainDocument.nursing_tasks.find(
++        {
++            StopDate: { $lt: currentDate },
++            IsComplete: false
++        },
++        'CpoeOrderId',
++        function (err, tasks) {
++            var completedTask = [];
++            var completedOrders = [];
++            let tempHistory = {};
++            tempHistory.action = 'Discontinue';
++            tempHistory.userId = "Sysytem";
++            tempHistory.timestamp = new Date();
+ 
++            _.forEach(tasks, function (task) {
++                completedTask.push(task._id);
++                completedOrders.push(task.CpoeOrderId)
++            })
++            cpoeDocument.CpoeOrder.update(
++                { _id: { $in: completedOrders } },
++                {
++                    $set: { 'orderStatus': 'completed' },
++                    $push: { activityLog: tempHistory }
++                },
++                { 'multi': true },
++                function (err, docs) {
++                    if (err) {
++                        console.log(err);
++                    } else if (docs) {
++                        domainDocument.nursing_tasks.update(
++                            { _id: { $in: completedTask } },
++                            { IsComplete: true },
++                            { 'multi': true },
++                            function (err, orderResults) {
++                                if (err) {
++                                    throw err;
++                                } else {
++                                    console.log('Task Marked Completed');
++                                }
++                            })
++                    }
++                })
++        }
++    )
++}
+ var discontinueScheduledOrders = function () {
+     let offset = parseInt(moment().endOf('day').format('x'));
+     cpoeDocument.CpoeOrder.find(
+@@ -110,7 +157,7 @@ var completeMedicationOrders = function () {
+     })
+ }
+ module.exports.testOrders = completeMedicationOrders;
+-function modifyActiveOldVisits(){
++function modifyActiveOldVisits() {
+     var currentTime = new Date().getTime();
+     var previousTime = (currentTime - 86400000);
+     console.log("Current Time:", moment(currentTime).format('MMMM Do YYYY, h:mm:ss a'));
+@@ -393,7 +440,7 @@ function PharmacyFailedOrder() {
+                     console.log("[ERROR] " + err);
+                     connection.close();
+                 } else {
+-                    console.log("Data fetched:"+JSON.stringify(success.recordset.length));
++                    console.log("Data fetched:" + JSON.stringify(success.recordset.length));
+                     connection.close();
+                     if (success.recordset.length > 0) {
+                         let records = [];
+@@ -428,7 +475,7 @@ function RegistrationFailedMessages() {
+                             records.push(element);
+                         });
+                         VisitModel.SyncVisits(records);
+-                    }else{
++                    } else {
+                         log("Failed Visit Not Found");
+                     }
+                 }
+diff --git a/models/schema/domain-model.js b/models/schema/domain-model.js
+index d8d8816..662a334 100644
+--- a/models/schema/domain-model.js
++++ b/models/schema/domain-model.js
+@@ -546,9 +546,9 @@ module.exports = function () {
+     verification_user_id: { type: String, required: false },
+     comment: { type: String, required: false },
+     history_date: { type: Number, required: true },
+-    reset:{type:Boolean,default:false},
+-    new_time:{ type: String },
+-    updated_by:{ type: String, required: true },
++    reset: { type: Boolean, default: false },
++    new_time: { type: String },
++    updated_by: { type: String, required: true },
+     updated_from_medical_reconciliation: { type: Boolean, default: false },
+     date_of_modification: { type: String, required: false }
+   }, { versionKey: false });
+@@ -1160,14 +1160,15 @@ module.exports = function () {
+   var nursing_tasks = mongoose.model('nursing_tasks', mongoose.Schema({
+     _id: String,
+     Urgency: { type: String, default: null },
+-    patientId: String,
+-    visitId: String,
++    PatientId: String,
++    VisitId: String,
+     Task: { type: String, required: true },
+     Comment: { type: String, default: null },
+     Instruction: { type: String, default: null },
++    Schedule: { type: String },
+     CpoeOrderId: { type: String, default: null },
+     StartDate: { type: Number, default: 0 },
+-    EndDate: { type: Number, default: 0 },
++    StopDate: { type: Number, default: 0 },
+     Created_At: { type: Number, default: Date.now() },
+     Created_By: String,
+     IsComplete: { type: Boolean, default: false },
+-- 
+2.11.0.windows.3
+

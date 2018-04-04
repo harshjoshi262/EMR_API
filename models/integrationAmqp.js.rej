@@ -1,0 +1,18 @@
+diff a/models/integrationAmqp.js b/models/integrationAmqp.js	(rejected hunks)
+@@ -382,16 +382,6 @@ module.exports.placeOrderToHIS = function (order) {
+                                 ch.publish(ex, key, new Buffer(JSON.stringify(order)), { deliveryMode: true, confirm: true, noAck: false });
+                             }
+                         })
+-
+-                        // documentObject.Patient.getIdsForOrder(order.patientId).exec(function (err, data) {
+-                        //     if (err) {
+-                        //         console.log(err);
+-                        //     } else {
+-                        //         order.Identifier = data;
+-                        //         ch.assertExchange(ex, 'topic', { durable: true, confirm: true });
+-                        //         ch.publish(ex, key, new Buffer(JSON.stringify(order)), { deliveryMode: true, confirm: true, noAck: false });
+-                        //     }
+-                        // })
+                     }
+                 })
+             }

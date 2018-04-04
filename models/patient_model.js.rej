@@ -1,0 +1,18 @@
+diff a/models/patient_model.js b/models/patient_model.js	(rejected hunks)
+@@ -968,7 +968,7 @@ module.exports.getPOCByDateRange = function (req, res) {
+         'result': 'none'
+       }
+       res.send(response)
+-    }else if(document.isFieldFilled(result)){
++    }else if(!document.isFieldFilled(result)){
+       var response = {
+         '_error_message': 'Result not found',
+         '_status_Code': 406,
+@@ -977,7 +977,6 @@ module.exports.getPOCByDateRange = function (req, res) {
+       }
+       res.send(response)
+     }else {
+-      log("Result is "+result)
+       var response = {
+         '_error_message': 'None',
+         '_status_Code': 200,

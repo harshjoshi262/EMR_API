@@ -1,0 +1,12 @@
+package-lock.json
+quickrxServer.pid
+logs/AMQP.log
+data/
+mongodb.conf
+node_modules/
+.vscode/settings.json
+logs/
+npm-debug.log
+.history/
+.vscode/
+logs

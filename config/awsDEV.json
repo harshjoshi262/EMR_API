@@ -1,0 +1,145 @@
+{
+    "SMTP": {
+        "baseUrl": "http://52.43.126.48:3000"
+    },
+    "HISDB": {
+        "server": "52.39.248.92",
+        "database": "MEDCARE_LWEH_TRAINING",
+        "database_development": "MEDCARE_DEVELOPMENT_LWEH",
+        "user": "sa",
+        "password": "Rational@1"
+    },
+    "mongodb": {
+        "dbName": "EHR_DEV",
+        "dbNameMaster": "Clinicare_Masters",
+        "dbHost": "52.24.4.212",
+        "dbPort": 28017,
+        "aclDbName": "ACL",
+        "prefix": ":@52.24.4.212:28017/",
+        "tail": "",
+        "masterDbName": "Clinicare_Masters",
+        "dbUser": "",
+        "dbPassword": ""
+    },
+    "ehrserver": {
+        "serverPort": 3300,
+        "ip": "52.43.126.48",
+        "secured": false,
+        "mims_server_port": 2002,
+        "mims_server_ip": "52.43.126.48",
+        "mims_interaction": true,
+        "allergy_interaction": true
+    },
+    "rabbitMQ": {
+        "switch": "OFF",
+        "host": "52.39.248.92",
+        "host_development": "127.0.0.1",
+        "accessUser": "sdgt",
+        "accessPassword": "sdgt",
+        "exchanges": [
+            {
+                "exchange": "registration",
+                "queue": [
+                    {
+                        "name": "OPD",
+                        "isIncoming": true,
+                        "keys": [
+                            "OPD"
+                        ]
+                    },
+                    {
+                        "name": "IPD",
+                        "isIncoming": true,
+                        "keys": [
+                            "IPD"
+                        ]
+                    },
+                    {
+                        "name": "Transfer",
+                        "isIncoming": true,
+                        "keys": [
+                            "Transfer"
+                        ]
+                    },
+                    {
+                        "name": "MedicationDispence",
+                        "isIncoming": true,
+                        "keys": [
+                            "MedicationDispence"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "USER",
+                "queue": [
+                    {
+                        "name": "user",
+                        "isIncoming": true,
+                        "keys": [
+                            "User_Doc"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "notification",
+                "queue": [
+                    {
+                        "name": "notification",
+                        "isIncoming": false,
+                        "keys": [
+                            "flagAlert"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "cpoeOrders",
+                "queue": [
+                    {
+                        "name": "Orders",
+                        "isIncoming": false,
+                        "keys": [
+                            "pharmacy",
+                            "procedure order",
+                            "Lab",
+                            "Blood Component",
+                            "nursing",
+                            "General",
+                            "Consult",
+                            "vital",
+                            "patient movement",
+                            "Imaging Order"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "MLC",
+                "queue": [
+                    {
+                        "name": "MLCPatient",
+                        "isIncoming": true,
+                        "keys": [
+                            "MLCPatient"
+                        ]
+                    }
+                ]
+            },
+            {
+                "exchange": "PACS_Test",
+                "queue": [
+                    {
+                        "name": "Incoming",
+                        "isIncoming": true,
+                        "keys": [
+                            "Incoming"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+   
+}
